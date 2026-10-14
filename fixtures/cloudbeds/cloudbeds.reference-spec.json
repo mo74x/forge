@@ -1,0 +1,129 @@
+{
+  "provider": "cloudbeds_mock",
+  "entity": "booking",
+  "externalIdPath": "$.reservation_id",
+  "externalUpdatedAtPath": "$.modified_at",
+  "statusLossy": true,
+  "unmappedPolicy": "capture",
+  "fields": [
+    {
+      "canonicalField": "propertyId",
+      "source": { "path": "$.property_id", "fallbackPaths": [] },
+      "transform": { "kind": "identity" },
+      "required": true,
+      "confidence": 1.0,
+      "evidence": ["sample-1: prop_101"]
+    },
+    {
+      "canonicalField": "unitId",
+      "source": { "path": "$.room_identifier", "fallbackPaths": [] },
+      "transform": { "kind": "identity" },
+      "required": true,
+      "confidence": 1.0,
+      "evidence": ["sample-1: apt-402"]
+    },
+    {
+      "canonicalField": "guestName",
+      "source": { "path": "$.guest_first_name", "fallbackPaths": [] },
+      "transform": {
+        "kind": "concat",
+        "paths": ["$.guest_first_name", "$.guest_last_name"],
+        "separator": " "
+      },
+      "required": true,
+      "confidence": 0.99,
+      "evidence": ["sample-1: Layla + Hassan -> Layla Hassan"]
+    },
+    {
+      "canonicalField": "guestEmail",
+      "source": { "path": "$.guest_email", "fallbackPaths": [] },
+      "transform": { "kind": "identity" },
+      "required": false,
+      "confidence": 0.98,
+      "evidence": ["sample-1: layla@example.com"]
+    },
+    {
+      "canonicalField": "checkIn",
+      "source": { "path": "$.start_date", "fallbackPaths": [] },
+      "transform": { "kind": "isoDate", "inputFormat": "ISO_STRING" },
+      "required": true,
+      "confidence": 1.0,
+      "evidence": ["sample-1: 2026-11-01T00:00:00Z -> 2026-11-01"]
+    },
+    {
+      "canonicalField": "checkOut",
+      "source": { "path": "$.end_date", "fallbackPaths": [] },
+      "transform": { "kind": "isoDate", "inputFormat": "ISO_STRING" },
+      "required": true,
+      "confidence": 1.0,
+      "evidence": ["sample-1: 2026-11-15T00:00:00Z -> 2026-11-15"]
+    },
+    {
+      "canonicalField": "status",
+      "source": { "path": "$.booking_status", "fallbackPaths": [] },
+      "transform": {
+        "kind": "enumMap",
+        "map": {
+          "reserved": "CONFIRMED",
+          "in_house": "CHECKED_IN",
+          "departed": "CHECKED_OUT",
+          "void": "CANCELLED"
+        },
+        "onUnknown": "error"
+      },
+      "required": true,
+      "confidence": 0.96,
+      "evidence": ["sample-1: reserved -> CONFIRMED", "sample-2: void -> CANCELLED"]
+    },
+    {
+      "canonicalField": "totalAmount",
+      "source": { "path": "$.total_cents", "fallbackPaths": [] },
+      "transform": { "kind": "centsToDecimal", "scale": 2 },
+      "required": true,
+      "confidence": 0.99,
+      "evidence": ["sample-1: 145000 -> 1450.00"]
+    },
+    {
+      "canonicalField": "currency",
+      "source": { "path": "$.currency_code", "fallbackPaths": [] },
+      "transform": { "kind": "uppercase" },
+      "required": true,
+      "confidence": 1.0,
+      "evidence": ["sample-1: usd -> USD"]
+    }
+  ],
+  "reverse": [
+    { "targetPath": "$.reservation_id", "canonicalField": "propertyId", "transform": { "kind": "identity" } },
+    { "targetPath": "$.property_id", "canonicalField": "propertyId", "transform": { "kind": "identity" } },
+    { "targetPath": "$.room_identifier", "canonicalField": "unitId", "transform": { "kind": "identity" } },
+    { "targetPath": "$.guest_first_name", "canonicalField": "guestName", "transform": { "kind": "splitIndex", "separator": " ", "index": 0, "joinRemainder": false } },
+    { "targetPath": "$.guest_last_name", "canonicalField": "guestName", "transform": { "kind": "splitIndex", "separator": " ", "index": 1, "joinRemainder": true } },
+    { "targetPath": "$.guest_email", "canonicalField": "guestEmail", "transform": { "kind": "identity" } },
+    { "targetPath": "$.start_date", "canonicalField": "checkIn", "transform": { "kind": "identity" } },
+    { "targetPath": "$.end_date", "canonicalField": "checkOut", "transform": { "kind": "identity" } },
+    {
+      "targetPath": "$.booking_status",
+      "canonicalField": "status",
+      "transform": {
+        "kind": "enumMap",
+        "map": {
+          "CONFIRMED": "reserved",
+          "PENDING": "reserved",
+          "CHECKED_IN": "in_house",
+          "CHECKED_OUT": "departed",
+          "CANCELLED": "void"
+        },
+        "onUnknown": "error"
+      }
+    },
+    { "targetPath": "$.total_cents", "canonicalField": "totalAmount", "transform": { "kind": "decimalToCents", "scale": 2 } },
+    { "targetPath": "$.currency_code", "canonicalField": "currency", "transform": { "kind": "uppercase" } }
+  ],
+  "webhook": {
+    "algorithm": "hmac-sha256",
+    "signatureHeader": "x-cloudbeds-signature",
+    "timestampHeader": "x-cloudbeds-timestamp",
+    "eventIdSource": { "location": "header", "keyOrPath": "x-event-id" },
+    "timestampSource": { "location": "header", "keyOrPath": "x-cloudbeds-timestamp", "format": "EPOCH_SECONDS" }
+  }
+}

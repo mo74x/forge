@@ -12,8 +12,8 @@
     "types": ["node", "jest"],
     "baseUrl": ".",
     "paths": {
-      "@lattice/mapping-spec": ["libs/mapping-spec/src/index.ts"],
-      "@lattice/*": ["libs/*/src/index.ts"]}
+      "@lattice/*": ["libs/*/src/index.ts"]
+    }
   },
   "include": ["libs/**/*.ts", "apps/**/*.ts", "eval/**/*.ts"],
   "exclude": ["node_modules", "**/dist"]

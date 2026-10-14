@@ -1,0 +1,30 @@
+{
+  "name": "forge-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "test": "jest",
+    "forge": "ts-node apps/cli/src/index.ts",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.0.0",
+    "fast-check": "^3.22.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.3",
+    "prisma": "^5.19.0",
+    "ts-jest": "^29.2.5",
+    "ts-morph": "^23.0.0",
+    "ts-node": "^10.9.2",
+    "turbo": "^2.1.0",
+    "typescript": "^5.5.4",
+    "zod": "^3.23.8"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

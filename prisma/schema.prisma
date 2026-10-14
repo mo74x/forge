@@ -1,0 +1,113 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum RunStatus {
+  QUEUED
+  INFERRING
+  GENERATING
+  VERIFYING
+  NEEDS_HUMAN
+  READY_FOR_REVIEW
+  APPROVED
+  EXPORTED
+  FAILED
+}
+
+enum SampleKind {
+  TRAINING
+  HELD_OUT
+}
+
+enum SpecSource {
+  LLM
+  REPAIR
+  HUMAN
+}
+
+model OnboardingRun {
+  id            String        @id @default(uuid())
+  provider      String
+  entity        String        @default("booking")
+  status        RunStatus     @default(QUEUED)
+  llmModel      String
+  promptVersion String        @default("v1.0.0")
+  docsExcerpt   String?
+  webhookVector Json?         // { payload, secret, headers, expectedSignature }
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  samples       Sample[]
+  attempts      Attempt[]
+  specs         SpecVersion[]
+  evalResults   EvalResult[]
+
+  @@index([provider, status])
+}
+
+model Sample {
+  id              String        @id @default(uuid())
+  runId           String
+  payload         Json
+  headers         Json?
+  kind            SampleKind    @default(TRAINING)
+  label           String        // e.g. "standard", "cancellation", "missing-email"
+  goldenCanonical Json?         // Human-verified expected CanonicalBooking output
+  createdAt       DateTime      @default(now())
+
+  run             OnboardingRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, kind])
+}
+
+model SpecVersion {
+  id        String        @id @default(uuid())
+  runId     String
+  version   Int
+  spec      Json          // Validated MappingSpec JSON
+  source    SpecSource
+  createdAt DateTime      @default(now())
+
+  run       OnboardingRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, version])
+}
+
+model Attempt {
+  id          String        @id @default(uuid())
+  runId       String
+  number      Int           // 1, 2, or 3
+  failedStage String?       // TYPECHECK | AST_SCAN | GOLDEN | HELD_OUT | PROPERTY | WEBHOOK
+  diagnostics Json?         // Structured error details fed to the repair loop
+  promptSent  String?
+  rawResponse String?
+  tokensIn    Int           @default(0)
+  tokensOut   Int           @default(0)
+  latencyMs   Int           @default(0)
+  passed      Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+
+  run         OnboardingRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, number])
+}
+
+model EvalResult {
+  id            String        @id @default(uuid())
+  suite         String        // "regenerate-cloudbeds" | "regenerate-guesty" | "third-adapter" | "mutation"
+  runId         String
+  fieldAccuracy Float         // 0.0 to 1.0
+  retries       Int
+  totalCostUsd  Float
+  wallClockMs   Int
+  details       Json          // Per-field breakdown and failure stage chart data
+  createdAt     DateTime      @default(now())
+
+  run           OnboardingRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([suite, createdAt])
+}

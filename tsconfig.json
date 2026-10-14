@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node", "jest"],
+    "baseUrl": ".",
+    "paths": {
+      "@lattice/mapping-spec": ["libs/mapping-spec/src/index.ts"],
+      "@lattice/*": ["libs/*/src/index.ts"]}
+  },
+  "include": ["libs/**/*.ts", "apps/**/*.ts", "eval/**/*.ts"],
+  "exclude": ["node_modules", "**/dist"]
+}

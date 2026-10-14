@@ -12,6 +12,7 @@ out/
 .vite/
 *.tsbuildinfo
 .tsbuildinfo
+.vscode/
 
 # Turbo
 .turbo/

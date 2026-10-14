@@ -77,7 +77,7 @@ export class AdapterCompiler {
       const MAPPED_PATHS = new Set<string>(${mappedPathsLiteral});
 
       export class ${className} implements PartnerAdapter<Record<string, unknown>> {
-        readonly provider = '${spec.provider}';
+        readonly provider = ${JSON.stringify(spec.provider)};
         readonly capabilities = {
           supportsOriginHeader: ${spec.webhook.algorithm === 'hmac-sha256'},
           supportsIdempotencyKey: true,
@@ -99,12 +99,12 @@ export class AdapterCompiler {
         ): string {
           ${
             spec.webhook.eventIdSource.location === 'header'
-              ? `const val = headers['${spec.webhook.eventIdSource.keyOrPath.toLowerCase()}'];
+              ? `const val = headers[${JSON.stringify(spec.webhook.eventIdSource.keyOrPath.toLowerCase())}];
                  const id = Array.isArray(val) ? val[0] : val;
-                 if (!id) throw new Error('Missing webhook event ID header: ${spec.webhook.eventIdSource.keyOrPath}');
+                 if (!id) throw new Error('Missing webhook event ID header: ' + ${JSON.stringify(spec.webhook.eventIdSource.keyOrPath)});
                  return String(id);`
-              : `const id = getByPath(payload, '${spec.webhook.eventIdSource.keyOrPath}');
-                 if (!id) throw new Error('Missing webhook event ID in body: ${spec.webhook.eventIdSource.keyOrPath}');
+              : `const id = getByPath(payload, ${JSON.stringify(spec.webhook.eventIdSource.keyOrPath)});
+                 if (!id) throw new Error('Missing webhook event ID in body: ' + ${JSON.stringify(spec.webhook.eventIdSource.keyOrPath)});
                  return String(id);`
           }
         }
@@ -115,13 +115,13 @@ export class AdapterCompiler {
         ): Date {
           ${
             spec.webhook.timestampSource.location === 'header'
-              ? `const raw = headers['${spec.webhook.timestampSource.keyOrPath.toLowerCase()}'];
+              ? `const raw = headers[${JSON.stringify(spec.webhook.timestampSource.keyOrPath.toLowerCase())}];
                  const str = Array.isArray(raw) ? raw[0] : raw;
                  if (!str) return new Date();
-                 return '${spec.webhook.timestampSource.format}' === 'EPOCH_SECONDS'
+                 return ${JSON.stringify(spec.webhook.timestampSource.format)} === 'EPOCH_SECONDS'
                    ? new Date(parseInt(str, 10) * 1000)
                    : new Date(str);`
-              : `const raw = getByPath(payload, '${spec.webhook.timestampSource.keyOrPath}');
+              : `const raw = getByPath(payload, ${JSON.stringify(spec.webhook.timestampSource.keyOrPath)});
                  if (!raw) return new Date();
                  return typeof raw === 'number' ? new Date(raw * 1000) : new Date(String(raw));`
           }
@@ -220,12 +220,12 @@ export class AdapterCompiler {
       const sigHeader = (spec.webhook.signatureHeader || 'x-signature').toLowerCase();
       const tsHeader = spec.webhook.timestampHeader?.toLowerCase();
       return `
-        const sigRaw = headers['${sigHeader}'];
+        const sigRaw = headers[${JSON.stringify(sigHeader)}];
         const signature = Array.isArray(sigRaw) ? sigRaw[0] : sigRaw;
         if (!signature) return false;
         ${
           tsHeader
-            ? `const tsRaw = headers['${tsHeader}'];
+            ? `const tsRaw = headers[${JSON.stringify(tsHeader)}];
                const timestamp = Array.isArray(tsRaw) ? tsRaw[0] : tsRaw;
                if (!timestamp) return false;
                const toSign = \`\${timestamp}.\${rawBody.toString('utf8')}\`;`
@@ -242,10 +242,10 @@ export class AdapterCompiler {
       return `
         try {
           const parsed = JSON.parse(rawBody.toString('utf8'));
-          const signature = parsed['${sigKey}'];
+          const signature = parsed[${JSON.stringify(sigKey)}];
           if (!signature || typeof signature !== 'string') return false;
           const clean = { ...parsed };
-          delete clean['${sigKey}'];
+          delete clean[${JSON.stringify(sigKey)}];
           const expected = crypto.createHmac('sha1', secret).update(JSON.stringify(clean)).digest('hex');
           if (signature.length !== expected.length) return false;
           return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
@@ -277,7 +277,7 @@ export class AdapterCompiler {
         const adapter = new ${className}();
 
         it('exposes the correct provider identifier', () => {
-          expect(adapter.provider).toBe('${spec.provider}');
+          expect(adapter.provider).toBe(${JSON.stringify(spec.provider)});
         });
       });
     `;

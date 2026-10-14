@@ -45,4 +45,57 @@ describe('Phase 2: Deterministic Inference & Codegen Compiler', () => {
     expect(run1.adapterCode).toContain('export class CloudbedsMockAdapter');
     expect(run1.adapterCode).toContain('crypto.timingSafeEqual');
   });
+
+  it('safely escapes webhook strings and prevents template string code injection (G1)', async () => {
+    const maliciousHeaderSpec = MappingSpecSchema.parse({
+      ...cloudbedsSpecJson,
+      webhook: {
+        algorithm: 'hmac-sha256',
+        signatureHeader: "x-sig'; console.log('hacked'); //",
+        timestampHeader: "x-ts'; process.exit(1); //",
+        eventIdSource: {
+          location: 'header',
+          keyOrPath: "x-id'; evil(); //",
+        },
+        timestampSource: {
+          location: 'header',
+          keyOrPath: "x-ts'; evil(); //",
+          format: 'EPOCH_SECONDS',
+        },
+      },
+    });
+
+    const compiledHeader = await AdapterCompiler.compile(maliciousHeaderSpec);
+    // Malicious quotes should be properly escaped inside JSON string literals and not unescaped raw syntax
+    expect(compiledHeader.adapterCode).toContain(
+      JSON.stringify("x-sig'; console.log('hacked'); //")
+    );
+    expect(compiledHeader.adapterCode).not.toContain("headers['x-sig';");
+
+    const maliciousBodySpec = MappingSpecSchema.parse({
+      ...cloudbedsSpecJson,
+      webhook: {
+        algorithm: 'hmac-sha1-body',
+        bodySignatureKey: "sig'; malicious(); //",
+        eventIdSource: {
+          location: 'body',
+          keyOrPath: "$.event_id'; malicious(); //",
+        },
+        timestampSource: {
+          location: 'body',
+          keyOrPath: "$.timestamp'; malicious(); //",
+          format: 'EPOCH_SECONDS',
+        },
+      },
+    });
+
+    const compiledBody = await AdapterCompiler.compile(maliciousBodySpec);
+    expect(compiledBody.adapterCode).toContain(
+      JSON.stringify("sig'; malicious(); //")
+    );
+    expect(compiledBody.adapterCode).toContain(
+      JSON.stringify("$.event_id'; malicious(); //")
+    );
+    expect(compiledBody.adapterCode).not.toContain("parsed['sig';");
+  });
 });
